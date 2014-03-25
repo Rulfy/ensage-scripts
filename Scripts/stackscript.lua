@@ -34,7 +34,7 @@ function Key(msg,code)
 
 			-- check if the player has currently selected a controllable creep
 			local selection = player.selection
-			if #selection ~= 1 or selection[1].type ~= LuaEntity.TYPE_CREEP or not selection[1].controllable then
+			if #selection ~= 1 or (selection[1].type ~= LuaEntity.TYPE_CREEP and selection[1].type ~= LuaEntity.TYPE_NPC) or not selection[1].controllable then
 				activated = false
 				return
 			end
