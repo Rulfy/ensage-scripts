@@ -16,7 +16,6 @@ route = nil -- currently active route
 ordered = false -- only order once
 registered = false -- only register our callbacks once
 
-gitTest = 1
 
 function Key(msg,code)
 	if msg ~= KEY_UP or not client.connected or client.loading then
