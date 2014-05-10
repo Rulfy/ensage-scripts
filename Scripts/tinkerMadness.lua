@@ -1,6 +1,7 @@
 --[[		Config			]]
 hotkey = "F" --hotkey
 x,y = 5,70 -- gui position
+minimumCombo = {"item_blink", "item_sheepstick"} -- items you need to use the combo, may replace/add "item_dagon"
 
 --[[		Code			]]
 require("libs.Utils")
@@ -10,7 +11,7 @@ sleeptick = 0
 targetHandle = nil
 activated = false
 myFont = drawMgr:CreateFont("tinkerCombo","Arial",14,400)
-statusText = drawMgr:CreateText(x,y,-1,"Awaiting Ult+Sheep+Blink.",myFont);
+statusText = drawMgr:CreateText(x,y,-1,"Awaiting combo items.",myFont);
 targetText = drawMgr:CreateText(x,y+15,-1,"",myFont);
 statusText.visible = false
 targetText.visible = false
@@ -78,7 +79,7 @@ function ComboTick( tick )
 	local dagon = me:FindDagon()
 	local soulring = me:FindItem("item_soul_ring")
 
-	if sheep.cd > 0 and (Q.cd > 0 or (dagon and dagon.cd > 0) or (ethereal and ethereal.cd > 0)) then
+	if (not sheep or sheep.cd > 0) and ((sheep and R.level < 3) or Q.cd > 0 or (dagon and dagon.cd > 0) or (ethereal and ethereal.cd > 0)) then
 		table.insert(castQueue,{1000+math.ceil(R:FindCastPoint()*1000),R})
 		return
 	end
@@ -120,14 +121,16 @@ function ComboTick( tick )
 	if linkens and dagon then
 		table.insert(castQueue,{500,dagon,target})
 	end
-	table.insert(castQueue,{100,sheep,target})
+	if sheep then
+		table.insert(castQueue,{100,sheep,target})
+	end
 	if ethereal then 
 		table.insert(castQueue,{100,"item_ethereal_blade",target})
 	end
 	if dagon and not linkens then 
 		table.insert(castQueue,{100,dagon,target})
 	end
-	if Q.level > 0 and R.level == 3 and Q.state == LuaEntityAbility.STATE_READY then 
+	if Q.level > 0 and (not sheep or R.level == 3) and Q.state == LuaEntityAbility.STATE_READY then 
 		table.insert(castQueue,{math.ceil(Q:FindCastPoint()*1000),Q,target})
 	end
 end
@@ -155,7 +158,23 @@ end
 -- Minimal combo = Ult + Blink + Sheep (so we usually got enough mana and can reset spells and stuff)
 function HasCombo()
 	local me = entityList:GetMyHero()
-	return me.abilities[4].level > 0 and me:FindItem("item_blink") ~= nil and me:FindItem("item_sheepstick") ~= nil
+
+	if me.abilities[4].level == 0 then
+		return false
+	end
+
+	for _,v in ipairs(minimumCombo) do
+		if v == "item_dagon" then
+			if not me:FindDagon() then
+				return false
+			end
+		else
+			if not me:FindItem(v) then
+				return false
+			end
+		end
+	end
+	return true
 end
 
 -- Check if we picked tinker and the minimal combo is available
@@ -170,6 +189,7 @@ function ComboChecker(tick)
 	if not me then
 		return
 	end
+
 	-- check if we're playing the correct hero
 	if me.classId ~= CDOTA_Unit_Hero_Tinker then
 		targetText.visible = false
@@ -194,7 +214,7 @@ function Load()
 	-- reset text
 	targetText.visible = false
 	statusText.visible = true
-	statusText.text = "Awaiting Ult+Sheep+Blink."
+	statusText.text = "Awaiting combo items."
 	-- reset combo found
 	activated = false
 	if not comboCallback then
