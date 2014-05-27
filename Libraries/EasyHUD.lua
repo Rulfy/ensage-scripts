@@ -343,7 +343,6 @@ end
 
 -- Adds a checkbox
 function EasyHUD:AddCheckbox(x,y,w,h,text,func,initstate, colorTrue, colorFalse)
-	-- unfinished yet
 	local tx = x+self.x+3
 	local ty = y+self.y+self.titleSize
 
