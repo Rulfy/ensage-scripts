@@ -8,6 +8,7 @@
 	Object functions:
 		EasyHUD:IsClosed(): Returns true if the HUD is closed
 		EasyHUD:IsMinimized(): Returns true if the HUD is minimized
+		EasyHUD:IsChecked(id): Returns true if the given element is a checkbox and checked
 
 		EasyHUD:Minimize([titlebarButtons): Minimizes/Restores the HUD depending on it's state
 		EasyHUD:Open(): Opens the HUD
@@ -15,24 +16,37 @@
 
 		EasyHUD:RemoveElement(id): Returns true if the element with the given id was found and removed
 		EasyHUD:CreateText(x,y,text): Returns the id and a DrawText object
-		EasyHUD:CreateTitleButton(color,text,func): Returns the id, DrawRect, DrawRect (outline) and a DrawText object
-		EasyHUD:CreateButton(x,y,w,h,color,text,func): Returns the id, DrawRect, DrawRect (outline) and a DrawText object
+		EasyHUD:CreateTitleButton(color,text[,func): Returns the id, DrawRect, DrawRect (outline) and a DrawText object
+		EasyHUD:CreateButton(x,y,w,h,color,text[,func): Returns the id, DrawRect, DrawRect (outline) and a DrawText object
+		EasyHUD:EasyHUD:AddCheckbox(x,y,w,h,text[,func,initstate,colorTrue,colorFalse): Same as EasyHUD:CreateButton
+
+	Notes:
+		The function for a button/checkbox will always provide all button elements as parameters.
+		So you'll receive buttonBackground (DrawRect), buttonFrame (DrawRect), buttonText (DrawText)[, checkboxState (boolean for checkboxes)
 
 	Attributes (please don't change them):
 		EasyHUD.titleSize: 			height of the title bar
 		EasyHUD.textColor: 			default text color
 		EasyHUD.backgroundColor: 	default background color
 		EasyHUD.buttonColor:		default button color
+		EasyHUD.checkboxTrue:		default checkbox color for checked
+		EasyHUD.checkboxFalse:		default checkbox color for unchecked
 
 	Example:
-		-- we require our lib
 		require("libs.EasyHUD")
-		-- a callback function for our button
-		function buttonClick(b1,b2,t) b1.color = bit.lshift(math.random(0,0xFFFFFF),4) + 0xFF end
-		-- create a new hud and add a text+button
+
+		function buttonClick(b1,b2,t)	
+			b1.color = bit.lshift(math.random(0,0xFFFFFF),4) + 0xFF 
+		end
+
 		myHUD = EasyHUD.new(100,100,250,100,"My first HUD",true,true)
 		myHUD:AddText(0,0,"Hello World")
 		myHUD:AddButton(0,20,90,40, 0x60615FFF,"DON'T PRESS",buttonClick)
+		myHUD:AddCheckbox(0,65,35,20,"I want to win.",nil,true)
+
+	Changelog:
+		* Fixed an error for buttons without callback functions.
+		* Added checkboxes with a create and IsChecked function
  ]]
 
 
@@ -44,6 +58,8 @@ EasyHUD.titleSize = 14
 EasyHUD.textColor = 0xFFFFFFFF
 EasyHUD.backgroundColor = 0x969991A0
 EasyHUD.buttonColor = 0x60615FFF
+EasyHUD.checkboxTrue = 0x17E317FF
+EasyHUD.checkboxFalse = 0xF23D30FF
 
 EasyHUD.TYPE_TEXT = 1
 EasyHUD.TYPE_BUTTON = 2
@@ -84,6 +100,11 @@ function EasyHUD:Minimize(titlebar)
 			for j = 1, 3, 1 do
 				element[3][j].visible = not self.minimized
 			end
+		-- toggle checkboxes
+		elseif element[2] == self.TYPE_CHECKBOX then
+			for j = 1, 3, 1 do
+				element[3][j].visible = not self.minimized
+			end
 		end
 	end
 	-- toggle content
@@ -119,6 +140,12 @@ end
 -- Check if the HUD is currently minimized
 function EasyHUD:IsMinimized()
 	return self.minimized
+end
+
+-- Check if the element is a checkbox and actually checked
+function EasyHUD:IsChecked(id)
+	local e = self.elements[id]
+	return e and e[2] == self.TYPE_CHECKBOX and e[5]
 end
 
 -- Creates a new HUD (constructor)
@@ -195,7 +222,7 @@ function EasyHUD:Tick(tick)
 		local element = self.elements[i]
 		if element[2] == self.TYPE_TEXT then
 			element[3].x, element[3].y = element[3].x + deltaX, element[3].y + deltaY
-		elseif element[2] == self.TYPE_BUTTON then
+		elseif element[2] == self.TYPE_BUTTON or element[2] == self.TYPE_CHECKBOX then
 			for j = 1, 3, 1 do
 				local e = element[3][j]
 				e.x, e.y = e.x + deltaX, e.y + deltaY
@@ -213,10 +240,24 @@ function EasyHUD:Key(msg,code)
 			for i = 1, len, 1 do
 				local element = self.elements[i]
 				-- check if minimized or if titlebar button
-				if element[2] == self.TYPE_BUTTON and (element[5] or not self.minimized)then
+				if element[2] == self.TYPE_BUTTON and (element[5] or not self.minimized) then
+					local b = element[3][1]
+					if element[4] and IsInside(mouse.x,mouse.y,b.x,b.y,b.w,b.h) then
+						element[4](b,element[3][2],element[3][3])
+						return
+					end
+				elseif element[2] == self.TYPE_CHECKBOX then
 					local b = element[3][1]
 					if IsInside(mouse.x,mouse.y,b.x,b.y,b.w,b.h) then
-						element[4](b,element[3][2],element[3][3])
+						element[5] = not element[5] -- toggle state
+						if element[5] then
+							b.color = element[6]
+						else
+							b.color = element[7]
+						end
+						if element[4] then
+							element[4](b,element[3][2],element[3][3],element[5])
+						end
 						return
 					end
 				end
@@ -301,7 +342,31 @@ function EasyHUD:AddButton(x,y,w,h,color,text,func)
 end
 
 -- Adds a checkbox
-function EasyHUD:AddCheckbox(x,y,w,h,color,text,func,initstate)
+function EasyHUD:AddCheckbox(x,y,w,h,text,func,initstate, colorTrue, colorFalse)
 	-- unfinished yet
+	local tx = x+self.x+3
+	local ty = y+self.y+self.titleSize
+
+	if not colorTrue then colorTrue = self.checkboxTrue end
+	if not colorFalse then colorFalse = self.checkboxFalse end
+
+	local color
+	if initstate then
+		color = colorTrue
+	else
+		color = colorFalse
+	end
+
+	local button = drawMgr:CreateRect(tx,ty,w,h,color)
+	local buttonOut = drawMgr:CreateRect(tx,ty,w,h,0x000000FF, true)
+
+	local buttonText = drawMgr:CreateText(tx + w + 2, ty, self.textColor, text, self.titleFont);
+	local textSize = self.titleFont:GetTextSize(text)
+	buttonText.y = ty + h/2-textSize.y/2
+
+	self.hasButton = true
+	table.insert(self.elements,{self.id,self.TYPE_CHECKBOX,{button,buttonOut,buttonText},func,initstate,colorTrue,colorFalse})
+	self.id = self.id + 1
+	return (self.id-1),button,buttonOut,buttonText
 end
 
