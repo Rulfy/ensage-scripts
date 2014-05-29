@@ -18,7 +18,7 @@ registered = false -- only register our callbacks once
 
 
 function Key(msg,code)
-	if msg ~= KEY_UP or not client.connected or client.loading then
+	if msg ~= KEY_UP or client.chat or not client.connected or client.loading then
 		return
 	end
 
