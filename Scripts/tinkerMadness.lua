@@ -42,22 +42,24 @@ function ComboTick( tick )
 
 	local target = entityList:GetEntity(targetHandle)
 	-- check if we still got a valid target
-	if not target or not target.visible or not target.alive or not me.alive then
-		targetHandle = nil
-		targetText.visible = false
-		statusText.text = "Combo ready."
-		script:UnregisterEvent(ComboTick)
-		return
+	if not target or not target.visible or not target.alive or not me.alive 
+		or target:IsUnitState(LuaEntityNPC.STATE_MAGIC_IMMUNE) then
+			targetHandle = nil
+			targetText.visible = false
+			statusText.text = "Combo ready."
+			script:UnregisterEvent(ComboTick)
+			return
 	end
-
+	-- grab abilities
 	local abilities = me.abilities
 	local Q = abilities[1]
 	local W = abilities[2]
 	local R = abilities[4]
+	-- return if we're casting our ult
 	if R.channelTime > 0 then
 		return
 	end
-
+	-- cast things in our queue
 	for i=1,#castQueue,1 do
 		local v = castQueue[1]
 		table.remove(castQueue,1)
@@ -72,9 +74,13 @@ function ComboTick( tick )
 			return
 		end
 	end
-	
+	-- grab needed items
 	local blink = me:FindItem("item_blink")
-	local sheep = me:FindItem("item_sheepstick")
+	local sheep = nil
+	-- we dont need a sheepstick against tide
+	if target.classId ~= CDOTA_Unit_Hero_Tidehunter then
+		sheep = me:FindItem("item_sheepstick")
+	end
 	local ethereal = me:FindItem("item_ethereal_blade")
 	local dagon = me:FindDagon()
 	local soulring = me:FindItem("item_soul_ring")
@@ -143,7 +149,7 @@ function Key( msg, code )
 	if code == string.byte(hotkey) then
 		-- get our target to destroy
 		local target = targetFind:GetClosestToMouse(500)
-		if not target then
+		if not target or target:IsUnitState(LuaEntityNPC.STATE_MAGIC_IMMUNE) then
 			targetHandle = nil
 			return
 		end
