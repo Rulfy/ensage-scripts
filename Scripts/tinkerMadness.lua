@@ -24,6 +24,7 @@ function ComboTick( tick )
 		return
 	end
 
+	-- 8 times a second should be enough
 	sleeptick = tick + 125
 
 	-- check if hotkey was pressed twice
