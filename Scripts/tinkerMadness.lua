@@ -232,6 +232,7 @@ function Load()
 	end
 end
 
+-- if we're already ingame, the text may be visible
 if IsIngame() then
 	statusText.visible = true
 end
