@@ -90,7 +90,7 @@ function ComboTick( tick )
 		table.insert(castQueue,{1000+math.ceil(R:FindCastPoint()*1000),R})
 		return
 	end
-
+	-- calc the minimum cast range we need
 	if Q.level > 0 then minRange = Q.castRange end
 	if dagon then minRange = math.min(minRange,dagon.castRange) end
 	if ethereal then minRange = math.min(minRange,ethereal.castRange) end
