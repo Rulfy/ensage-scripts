@@ -27,7 +27,7 @@ function ComboTick( tick )
 	-- 8 times a second should be enough
 	sleeptick = tick + 125
 
-	-- check if hotkey was pressed twice
+	-- check if hotkey was pressed twice to deselect the target
 	if not targetHandle then
 		targetText.visible = false
 		statusText.text = "Combo ready."
