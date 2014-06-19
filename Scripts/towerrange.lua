@@ -1,10 +1,19 @@
 --[[		Config			]]
-ownRange = true -- range of own towers
-enemyRange = true -- range of enemy towers
-
-towerRange = 850 -- dota wiki says 700 but it's actually like 850 (tested for mid tower)
+-- config can be found in Scripts\config\towerrange.txt
 
 --[[		Code			]]
+require("libs.ScriptConfig")
+
+config = ScriptConfig.new()
+config:SetParameter("OwnRange", true)
+config:SetParameter("EnemyRange", true)
+config:SetParameter("TowerRange", 850)
+config:Load()
+
+ownRange = config.OwnRange
+enemyRange = config.EnemyRange
+towerRange = config.TowerRange
+
 effects = {}
 function FetchTowers()
 	effects = {}

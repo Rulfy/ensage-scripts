@@ -1,8 +1,23 @@
 --[[		Config			]]
-hotkey = "O" --hotkey
-x,y = 5,50 -- gui position
+-- config can be found in Scripts\config\stackscript.txt
 
 --[[		Code			]]
+require("libs.ScriptConfig")
+
+config = ScriptConfig.new()
+config:SetParameter("Hotkey", "O", config.TYPE_HOTKEY)
+config:SetParameter("GUI-X", 5)
+config:SetParameter("GUI-Y", 50)
+config:Load()
+
+hotkey = config.Hotkey
+x,y = config["GUI-X"], config["GUI-Y"]
+
+ownRange = config.OwnRange
+enemyRange = config.EnemyRange
+towerRange = config.TowerRange
+
+
 startTime = 49                         -- game time seconds when start to stack (from wait point)
 stack_route_radiant = {Vector(-2991,198,256), Vector(-7264,-6752,270), Vector(-2144,-480,256)}  -- triangle route for radiant ( 1:pull point, 2: fountain, 3: wait point )
 stack_route_dire = {Vector(4447,-1950,127), Vector(6975,6742,256), Vector(5083,-1433,127)}      -- triangle route for dire  1:pull point, 2: fountain, 3: wait point )
