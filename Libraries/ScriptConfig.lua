@@ -43,6 +43,10 @@
 		else
 			print("A new config file has been created")
 		end
+
+	Changelog:
+		* Added TYPE_STRING_ARRAY to parse "string1, string2, string3" and return it as a table
+		* Fixed a bug with CreateDefault
  ]]
 
 ScriptConfig = {}
@@ -55,6 +59,7 @@ ScriptConfig.TYPE_STRING = 2
 ScriptConfig.TYPE_NUMBER = 3
 -- custom types
 ScriptConfig.TYPE_HOTKEY = 4
+ScriptConfig.TYPE_STRING_ARRAY = 5
 
 -- index function to access config values directly
 function ScriptConfig.__index(table, key)
@@ -170,6 +175,8 @@ function ScriptConfig:Load( )
 					end
 				elseif entry[2] == ScriptConfig.TYPE_STRING then
 					entry[3] = value
+				elseif entry[2] == ScriptConfig.TYPE_STRING_ARRAY then
+					entry[3] = value -- we split it while returning
 				end
 				-- if we still got no value then use the default value
 				if entry[3] == nil then
@@ -212,9 +219,12 @@ function ScriptConfig:CreateDefault( )
 		print("<<ScriptConfig:CreateDefault>> can't create a new config file")
 		return
 	end
-
+	-- write to file and initialize
 	for k,v in pairs(self.parameters) do
 		file:write( string.format("%s = %s\n", k, v[1]) )
+		-- initialize variable
+		v[3] = v[1]
+		self.parameters[k] = v
 	end
 	file:flush()
 	file:close()
@@ -222,10 +232,23 @@ end
 
 -- returns the loaded value and the default value
 function ScriptConfig:GetParameter( parameter, withDefault )
+	local entry = self.parameters[ parameter ]
+	if not entry then
+		return nil
+	end
+	-- if we've got an array then we need to split before returning
+	if entry[2] == ScriptConfig.TYPE_STRING_ARRAY then
+		if withDefault then
+			return split(entry[3]), split(entry[1])
+		else
+			return split(entry[3])
+		end
+	end
+	-- else just return the value
 	if withDefault then
-		return self.parameters[ parameter ][ 3 ], self.parameters[ parameter ][ 1 ]
+		return entry[3], entry[1]
 	else
-		return self.parameters[ parameter ][ 3 ]
+		return entry[3]
 	end
 end
 
@@ -247,4 +270,12 @@ end
 -- http://lua-users.org/wiki/StringTrim
 function trim5(s)
   return s:match'^%s*(.*%S)' or ''
+end
+
+-- http://lua-users.org/wiki/SplitJoin
+function split(text,sep)
+    local sep, fields = sep or ":", {}
+    local pattern = string.format("([^%s]+)", sep)
+    text:gsub(pattern, function(c) fields[#fields+1] = trim5(c) end)
+    return fields
 end

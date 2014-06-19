@@ -1,11 +1,27 @@
 --[[		Config			]]
-hotkey = "F" --hotkey
-x,y = 5,70 -- gui position
-minimumCombo = {"item_blink", "item_sheepstick"} -- items you need to use the combo, may replace/add "item_dagon"
+
+-- NO CONFIG IN HERE
+-- LOAD THIS SCRIPT ONCE AND CHECK "Scripts\config\tinkerMadness.txt" for config options then
+
+--hotkey = "F" --hotkey
+--x,y = 5,70 -- gui position
+--minimumCombo = {"item_blink", "item_sheepstick"} -- items you need to use the combo, may replace/add "item_dagon"
 
 --[[		Code			]]
 require("libs.Utils")
 require("libs.TargetFind")
+require("libs.ScriptConfig")
+
+config = ScriptConfig.new()
+config:SetParameter("GUI x Position", 5)
+config:SetParameter("GUI y Position", 70)
+config:SetParameter("Hotkey", "F", config.TYPE_HOTKEY)
+config:SetParameter("MinimumCombo", "item_blink, item_sheepstick")
+config:Load()
+
+minimumCombo = config.MinimumCombo
+x,y = config:GetParameter("GUI x Position"), config:GetParameter("GUI y Position")
+hotkey = config.Hotkey
 
 sleeptick = 0
 targetHandle = nil
