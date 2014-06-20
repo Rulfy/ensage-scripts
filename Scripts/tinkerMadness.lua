@@ -16,7 +16,7 @@ config = ScriptConfig.new()
 config:SetParameter("GUI x Position", 5)
 config:SetParameter("GUI y Position", 70)
 config:SetParameter("Hotkey", "F", config.TYPE_HOTKEY)
-config:SetParameter("MinimumCombo", "item_blink, item_sheepstick")
+config:SetParameter("MinimumCombo", "item_blink, item_sheepstick",config.TYPE_STRING_ARRAY)
 config:Load()
 
 minimumCombo = config.MinimumCombo
@@ -163,7 +163,7 @@ function Key( msg, code )
 		return
 	end
 	-- only our configured hotkey is interesting
-	if code == string.byte(hotkey) then
+	if code == hotkey then
 		-- get our target to destroy
 		local target = targetFind:GetClosestToMouse(500)
 		if not target or target:IsUnitState(LuaEntityNPC.STATE_MAGIC_IMMUNE) then

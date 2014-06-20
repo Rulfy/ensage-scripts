@@ -37,7 +37,7 @@ function Key(msg,code)
 		return
 	end
 
-	if code == string.byte(hotkey) then
+	if code == hotkey then
 		activated = not activated
 		if activated then
 

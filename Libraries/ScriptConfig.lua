@@ -67,8 +67,13 @@ function ScriptConfig.__index(table, key)
 	local v = rawget(table.parameters, key)
 	-- if it's a valid parameter
     if v then
-    	-- return the value and default value of our parameter
-    	return v[3],v[1]
+    	if v[2] == ScriptConfig.TYPE_STRING_ARRAY then
+    		--return as splitted table
+    		return split(v[3],","), split(v[1],",")
+    	else
+    		-- return the value and default value of our parameter
+    		return v[3],v[1]
+    	end
     end
     -- we don't have a parameter with this name, so check our metatable
     return rawget(getmetatable(table),key)
