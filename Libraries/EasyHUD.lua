@@ -45,6 +45,7 @@
 		myHUD:AddCheckbox(0,65,35,20,"I want to win.",nil,true)
 
 	Changelog:
+		* Fixed checkboxes being clickable while minimized
 		* Fixed an error for buttons without callback functions.
 		* Added checkboxes with a create and IsChecked function
  ]]
@@ -246,7 +247,7 @@ function EasyHUD:Key(msg,code)
 						element[4](b,element[3][2],element[3][3])
 						return
 					end
-				elseif element[2] == self.TYPE_CHECKBOX then
+				elseif element[2] == self.TYPE_CHECKBOX and not self.minimized then
 					local b = element[3][1]
 					if IsInside(mouse.x,mouse.y,b.x,b.y,b.w,b.h) then
 						element[5] = not element[5] -- toggle state
