@@ -284,7 +284,7 @@ end
 function EasyHUD:RemoveElement(id)
 	local len = #self.elements
 	for i = 1, len, 1 do
-		if elements[i][1] == id then
+		if self.elements[i][1] == id then
 			table.remove(self.elements,i)
 			return true
 		end
