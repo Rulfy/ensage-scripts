@@ -25,7 +25,11 @@ stack_route_dire = {Vector(4447,-1950,127), Vector(6975,6742,256), Vector(5083,-
 activated = true -- toggle by hotkey if activated
 creepHandle = nil -- current creep
 font = drawMgr:CreateFont("stackfont","Arial",14,500) -- font for drawing
-defaultText = "StackScript: select your creep and press \""..hotkey.."\"." -- default text to display
+if string.byte("A") <= hotkey and hotkey <= string.byte("Z") then
+	defaultText = "StackScript: select your creep and press \""..string.char(hotkey).."\"." -- default text to display
+else
+	defaultText = "StackScript: select your creep and press keycode \""..hotkey.."\"." -- default text to display
+end
 text = drawMgr:CreateText(x,y,-1,defaultText,font) -- text object to draw
 route = nil -- currently active route
 ordered = false -- only order once
