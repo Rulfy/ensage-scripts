@@ -197,7 +197,18 @@ function ScriptConfig:Load( )
 	local newLine = false
 	for k,v in pairs(self.parameters) do
 		if v[3] == nil then
-			v[3] = v[1]
+			-- initialize variable, if its an hotkey and the default value is a string, we must convert it to a keycode
+			if v[2] == ScriptConfig.TYPE_HOTKEY and type(v[1]) == "string" then
+				-- check if it's just a single Letter or directly the keycode
+				local hotkey = v[1]:match("%a")
+				if hotkey then
+					v[3] = string.byte(hotkey)
+				else
+					v[3] = tonumber(v[1])
+				end
+			else
+				v[3] = v[1]
+			end
 			self.parameters[k] = v
 
 			-- create a new line first to seperate our old content from the new one
@@ -227,8 +238,18 @@ function ScriptConfig:CreateDefault( )
 	-- write to file and initialize
 	for k,v in pairs(self.parameters) do
 		file:write( string.format("%s = %s\n", k, v[1]) )
-		-- initialize variable
-		v[3] = v[1]
+		-- initialize variable, if its an hotkey and the default value is a string, we must convert it to a keycode
+		if v[2] == ScriptConfig.TYPE_HOTKEY and type(v[1]) == "string" then
+			-- check if it's just a single Letter or directly the keycode
+			local hotkey = v[1]:match("%a")
+			if hotkey then
+				v[3] = string.byte(hotkey)
+			else
+				v[3] = tonumber(v[1])
+			end
+		else
+			v[3] = v[1]
+		end
 		self.parameters[k] = v
 	end
 	file:flush()
