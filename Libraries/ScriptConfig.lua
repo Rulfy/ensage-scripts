@@ -113,7 +113,7 @@ function ScriptConfig:SetParameters( parameterTable )
 end
 
 function ScriptConfig:SetParameter( parameter, defaultValue, parameterType )
-	if not defaultValue then
+	if defaultValue == nil then
 		print("<<ScriptConfig:SetParameter>> no default value given for "..(parameter or "NO PARAMETER"))
 		return
 	end
