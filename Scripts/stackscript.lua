@@ -18,17 +18,17 @@ enemyRange = config.EnemyRange
 towerRange = config.TowerRange
 
 
-startTime = 49                         -- game time seconds when start to stack (from wait point)
+startTime = 30                         -- game time seconds when start to stack (from wait point)
 stack_route_radiant = {Vector(-2991,198,256), Vector(-7264,-6752,270), Vector(-2144,-480,256)}  -- triangle route for radiant ( 1:pull point, 2: fountain, 3: wait point )
 stack_route_dire = {Vector(4447,-1950,127), Vector(6975,6742,256), Vector(5083,-1433,127)}      -- triangle route for dire  1:pull point, 2: fountain, 3: wait point )
  
 activated = true -- toggle by hotkey if activated
-creepHandle = nil -- current creep
+
 font = drawMgr:CreateFont("stackfont","Arial",14,500) -- font for drawing
 if string.byte("A") <= hotkey and hotkey <= string.byte("Z") then
-	defaultText = "StackScript: select your creep and press \""..string.char(hotkey).."\"." -- default text to display
+	defaultText = "StackScript: select your hero and press \""..string.char(hotkey).."\"." -- default text to display
 else
-	defaultText = "StackScript: select your creep and press keycode \""..hotkey.."\"." -- default text to display
+	defaultText = "StackScript: select your hero and press keycode \""..hotkey.."\"." -- default text to display
 end
 text = drawMgr:CreateText(x,y,-1,defaultText,font) -- text object to draw
 route = nil -- currently active route
@@ -93,9 +93,9 @@ function Tick(tick)
 	end
 
 	-- check if our creep is still existing and alive
-	local creep = entityList:GetEntity(creepHandle)
-	if not creep or not creep.alive then
-		text.text = "StackScript: creep dead."
+	local hero = entityList:GetEntity(HeroHandle)
+	if not hero or not Hero.alive then
+		text.text = "StackScript: Hero dead."
 		activated = false
 		creepHandle = nil
 		return
@@ -106,8 +106,8 @@ function Tick(tick)
 		ordered = true
 
 		local selection = player.selection
-		-- select our pull creep
-		player:Select(creep)
+		
+		player:Select(hero)
 		-- move the triangle route
 		player:Move(route[1],false)
 		player:Move(route[2],true)
