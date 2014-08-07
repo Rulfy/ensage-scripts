@@ -113,7 +113,7 @@ function ComboTick( tick )
 
 	local distance = me:GetDistance2D(target)
 	-- check if target is too far away
-	local blinkRange = blink:GetSpecialData("blink_range",1)
+	local blinkRange = blink:GetSpecialData("blink_range")
 	if blinkRange + minRange < distance then
 		statusText.text = string.format("Target is too far away (%i vs %i).",distance,blinkRange)
 		return
