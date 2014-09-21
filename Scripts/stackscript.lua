@@ -137,8 +137,8 @@ function Close()
 	activated = false
 	ordered = false
 
-	script:UnregisterEvent(EVENT_TICK)
-	script:UnregisterEvent(EVENT_KEY)
+	script:UnregisterEvent(Tick)
+	script:UnregisterEvent(Key)
 	registered = false
 end
 
