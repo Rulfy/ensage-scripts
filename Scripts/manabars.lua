@@ -1,3 +1,4 @@
+--<<This script displays manabars below the health bar>>
 --[[		Code			]]
 -- our text font must be small
 myFont = drawMgr:CreateFont("manabarsFont","Arial",10,10) 
