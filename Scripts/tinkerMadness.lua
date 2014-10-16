@@ -16,12 +16,15 @@ config = ScriptConfig.new()
 config:SetParameter("GUI x Position", 5)
 config:SetParameter("GUI y Position", 70)
 config:SetParameter("Hotkey", "F", config.TYPE_HOTKEY)
+config:SetParameter("StopKey", "S", config.TYPE_HOTKEY)
+config:SetParameter("ComboSleep", 50)
 config:SetParameter("MinimumCombo", "item_blink, item_sheepstick",config.TYPE_STRING_ARRAY)
 config:Load()
 
 minimumCombo = config.MinimumCombo
 x,y = config:GetParameter("GUI x Position"), config:GetParameter("GUI y Position")
 hotkey = config.Hotkey
+stopkey = config.StopKey
 
 sleeptick = 0
 targetHandle = nil
@@ -41,7 +44,7 @@ function ComboTick( tick )
 	end
 
 	-- 8 times a second should be enough
-	sleeptick = tick + 125
+	sleeptick = tick + config.ComboSleep
 
 	-- check if hotkey was pressed twice to deselect the target
 	if not targetHandle then
@@ -73,7 +76,7 @@ function ComboTick( tick )
 	local W = abilities[2]
 	local R = abilities[4]
 	-- return if we're casting our ult
-	if R.channelTime > 0 then
+	if R.channelTime > 0 or R.abilityPhase then
 		return
 	end
 	-- cast things in our queue
@@ -86,8 +89,11 @@ function ComboTick( tick )
 		if type(ability) == "string" then
 			ability = me:FindItem(ability)
 		end
-		if ability and me:SafeCastAbility(ability,v[3],false) then
-			sleeptick = tick + v[1]
+		if ability and ((me:SafeCastAbility(ability,v[3],false)) or (v[4] and ability:CanBeCasted())) then
+			if v[4] and ability:CanBeCasted() then
+				me:CastAbility(ability,v[3],false)
+			end
+			sleeptick = tick + v[1] + client.latency
 			return
 		end
 	end
@@ -102,14 +108,14 @@ function ComboTick( tick )
 	local dagon = me:FindDagon()
 	local soulring = me:FindItem("item_soul_ring")
 
-	if (not sheep or sheep.cd > 0) and ((sheep and R.level < 3) or Q.cd > 0 or (dagon and dagon.cd > 0) or (ethereal and ethereal.cd > 0)) then
+	if (not sheep or sheep.cd > 0) and ((sheep and R.level < 3) or Q.cd > 0 or (dagon and dagon.cd > 0) or (ethereal and ethereal.cd > 0)) and R:CanBeCasted() then
 		table.insert(castQueue,{1000+math.ceil(R:FindCastPoint()*1000),R})
 		return
 	end
 	-- calc the minimum cast range we need
 	if Q.level > 0 then minRange = Q.castRange end
-	if dagon then minRange = math.min(minRange,dagon.castRange) end
-	if ethereal then minRange = math.min(minRange,ethereal.castRange) end
+	if dagon and dagon:CanBeCasted() then minRange = math.min(minRange,dagon.castRange) end
+	if ethereal and ethereal:CanBeCasted() then minRange = math.min(minRange,ethereal.castRange) end
 
 	local distance = me:GetDistance2D(target)
 	-- check if target is too far away
@@ -119,43 +125,75 @@ function ComboTick( tick )
 		return
 	end
 	local casted = false
-	-- fire rockets
-	if W.level > 0 and W.state == LuaEntityAbility.STATE_READY then
-		table.insert(castQueue,{100,W})
-	end
 	-- check if we need to blink to the target
+	local tpos = me.position
 	if minRange < distance then
 		statusText.text = "Need to blink."
-		if blink.cd > 0 then
+		if blink.cd > 0 and R:CanBeCasted() then
 			table.insert(castQueue,{1000+math.ceil(R:FindCastPoint()*1000),R})
 			return
 		end
-		-- calc the blink target position
-		local tpos = target.position - me.position
-		tpos = tpos / tpos.length
-		tpos = tpos * (distance-minRange*0.5)
-		tpos = me.position + tpos
-		table.insert(castQueue,{100,blink,tpos})
+		-- calc the blink target position	
+		tpos = target.position - me.position
+		if distance > blinkRange then
+			tpos = tpos / tpos.length
+			tpos = tpos * (distance-minRange*0.5)
+			tpos = me.position + tpos
+		else
+			tpos = target.position
+		end
+		if GetDistance2D(me,tpos) > (blinkRange-100) then
+			tpos = (tpos - me.position) * (blinkRange - 100) / GetDistance2D(tpos,me) + me.position
+		end
+		local turn = (math.max(math.abs(FindAngleR(me) - math.rad(FindAngleBetween(me, target.position))) - 0.69, 0)/(0.6*(1/0.03)))*1000
+		table.insert(castQueue,{math.ceil(blink:FindCastPoint()*1000 + turn),blink,tpos})
 	end
 	-- soul ring
 	table.insert(castQueue,{100,soulring})
-	-- now the rest of our combo: tp -> [W -> [blink] -> sheep -> ethereal -> dagon -> Q -> R
+	-- now the rest of our combo: tp -> [[blink] -> sheep -> ethereal -> dagon -> W -> Q -> R
 	local linkens = target:IsLinkensProtected()
-	if linkens and dagon then
-		table.insert(castQueue,{500,dagon,target})
+	if linkens and dagon and dagon:CanBeCasted() then
+		table.insert(castQueue,{math.ceil(dagon:FindCastPoint()*1000),dagon,target,true})
 	end
-	if sheep then
-		table.insert(castQueue,{100,sheep,target})
+	if sheep and sheep:CanBeCasted() then
+		table.insert(castQueue,{math.ceil(sheep:FindCastPoint()*1000),sheep,target})
 	end
-	if ethereal then 
-		table.insert(castQueue,{100,"item_ethereal_blade",target})
+	if ethereal and ethereal:CanBeCasted() and not linkens then 
+		table.insert(castQueue,{math.ceil(ethereal:FindCastPoint()*1000 + ((GetDistance2D(tpos,target)-50)/1200)*1000 - dagon:FindCastPoint()*1000 - client.latency),"item_ethereal_blade",target})
+	elseif linkens then
+		table.insert(castQueue,{math.ceil(ethereal:FindCastPoint()*1000 + ((GetDistance2D(tpos,target)-50)/1200)*1000 - W:FindCastPoint()*1000 - ((GetDistance2D(tpos,target)-50)/900)*1000 - client.latency),"item_ethereal_blade",target})
 	end
-	if dagon and not linkens then 
-		table.insert(castQueue,{100,dagon,target})
+	if dagon and not linkens and dagon:CanBeCasted() then 
+		table.insert(castQueue,{math.ceil(dagon:FindCastPoint()*1000),dagon,target})
 	end
-	if Q.level > 0 and (not sheep or R.level == 3) and Q.state == LuaEntityAbility.STATE_READY then 
+	if W.level > 0 and W:CanBeCasted() then
+		table.insert(castQueue,{100,W})
+	end
+	if Q.level > 0 and (not sheep or R.level == 3) and Q:CanBeCasted() then 
 		table.insert(castQueue,{math.ceil(Q:FindCastPoint()*1000),Q,target})
 	end
+end
+
+function FindAngleR(entity)
+	if entity.rotR < 0 then
+		return math.abs(entity.rotR)
+	else
+		return 2 * math.pi - entity.rotR
+	end
+end
+
+function FindAngleBetween(first, second)
+	xAngle = math.deg(math.atan(math.abs(second.x - first.position.x)/math.abs(second.y - first.position.y)))
+	if first.position.x <= second.x and first.position.y >= second.y then
+		return 90 - xAngle
+	elseif first.position.x >= second.x and first.position.y >= second.y then
+		return xAngle + 90
+	elseif first.position.x >= second.x and first.position.y <= second.y then
+		return 90 - xAngle + 180
+	elseif first.position.x <= second.x and first.position.y <= second.y then
+		return xAngle + 90 + 180
+	end
+	return nil
 end
 
 function Key( msg, code )
@@ -163,10 +201,13 @@ function Key( msg, code )
 		return
 	end
 	-- only our configured hotkey is interesting
-	if code == hotkey then
+	if code == stopkey then
+		targetHandle = nil
+		return
+	elseif code == hotkey then
 		-- get our target to destroy
 		local target = targetFind:GetClosestToMouse(500)
-		if not target or target:IsUnitState(LuaEntityNPC.STATE_MAGIC_IMMUNE) then
+		if not target or target:IsUnitState(LuaEntityNPC.STATE_MAGIC_IMMUNE) or targetHandle then
 			targetHandle = nil
 			return
 		end
@@ -255,5 +296,3 @@ end
 
 script:RegisterEvent(EVENT_TICK,ComboChecker)
 script:RegisterEvent(EVENT_LOAD,Load)
-
-
