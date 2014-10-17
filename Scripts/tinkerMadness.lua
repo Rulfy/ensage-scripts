@@ -19,6 +19,7 @@ config:SetParameter("Hotkey", "F", config.TYPE_HOTKEY)
 config:SetParameter("StopKey", "S", config.TYPE_HOTKEY)
 config:SetParameter("ComboSleep", 50)
 config:SetParameter("MinimumCombo", "item_blink, item_sheepstick",config.TYPE_STRING_ARRAY)
+config:SetParameter("AlwaysUlti", false)
 config:Load()
 
 minimumCombo = config.MinimumCombo
@@ -28,7 +29,7 @@ stopkey = config.StopKey
 
 sleeptick = 0
 targetHandle = nil
-activated = false
+activated = false local casted = false
 myFont = drawMgr:CreateFont("tinkerCombo","Arial",14,400)
 statusText = drawMgr:CreateText(x,y,-1,"Awaiting combo items.",myFont);
 targetText = drawMgr:CreateText(x,y+15,-1,"",myFont);
@@ -49,6 +50,7 @@ function ComboTick( tick )
 	-- check if hotkey was pressed twice to deselect the target
 	if not targetHandle then
 		targetText.visible = false
+		casted = false
 		statusText.text = "Combo ready."
 		script:UnregisterEvent(ComboTick)
 		return
@@ -65,6 +67,7 @@ function ComboTick( tick )
 	if not target or not target.visible or not target.alive or not me.alive 
 		or target:IsUnitState(LuaEntityNPC.STATE_MAGIC_IMMUNE) then
 			targetHandle = nil
+			casted = false
 			targetText.visible = false
 			statusText.text = "Combo ready."
 			script:UnregisterEvent(ComboTick)
@@ -108,7 +111,7 @@ function ComboTick( tick )
 	local dagon = me:FindDagon()
 	local soulring = me:FindItem("item_soul_ring")
 
-	if (not sheep or sheep.cd > 0) and ((sheep and R.level < 3) or Q.cd > 0 or (dagon and dagon.cd > 0) or (ethereal and ethereal.cd > 0)) and R:CanBeCasted() then
+	if (not sheep or sheep.cd > 0) and ((sheep and R.level < 3) or Q.cd > 0 or (dagon and dagon.cd > 0) or (ethereal and ethereal.cd > 0)) and R:CanBeCasted() and ((casted and not config.AlwaysUlti) or config.AlwaysUlti) then
 		table.insert(castQueue,{1000+math.ceil(R:FindCastPoint()*1000),R})
 		return
 	end
@@ -124,7 +127,6 @@ function ComboTick( tick )
 		statusText.text = string.format("Target is too far away (%i vs %i).",distance,blinkRange)
 		return
 	end
-	local casted = false
 	-- check if we need to blink to the target
 	local tpos = me.position
 	if minRange < distance then
@@ -172,6 +174,7 @@ function ComboTick( tick )
 	if Q.level > 0 and (not sheep or R.level == 3) and Q:CanBeCasted() then 
 		table.insert(castQueue,{math.ceil(Q:FindCastPoint()*1000),Q,target})
 	end
+	casted = true
 end
 
 function FindAngleR(entity)
