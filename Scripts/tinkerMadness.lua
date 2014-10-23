@@ -131,7 +131,7 @@ function ComboTick( tick )
 	local tpos = me.position
 	if minRange < distance then
 		statusText.text = "Need to blink."
-		if blink.cd > 0 and R:CanBeCasted() then
+		if blink.cd > 0 and R:CanBeCasted() and ((casted and not config.AlwaysUlti) or config.AlwaysUlti) then
 			table.insert(castQueue,{1000+math.ceil(R:FindCastPoint()*1000),R})
 			return
 		end
