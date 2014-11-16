@@ -218,6 +218,7 @@ function Key( msg, code )
 		targetText.visible = true
 		targetHandle = target.handle
 		-- we got a valid target, now let's beat him up!
+		castQueue = {}
 		script:RegisterEvent(EVENT_TICK,ComboTick)
 	end
 end
