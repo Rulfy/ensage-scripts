@@ -82,12 +82,30 @@ function ComboTick( tick )
 	if R.channelTime > 0 or R.abilityPhase then
 		return
 	end
+	
+	-- grab needed items
+	local blink = me:FindItem("item_blink")
+	local sheep = nil
+	-- we dont need a sheepstick against tide
+	if target.classId ~= CDOTA_Unit_Hero_Tidehunter then
+		sheep = me:FindItem("item_sheepstick")
+	end
+	local ethereal = me:FindItem("item_ethereal_blade")
+	local dagon = me:FindDagon()
+	local soulring = me:FindItem("item_soul_ring")
+	
 	-- cast things in our queue
 	for i=1,#castQueue,1 do
 		local v = castQueue[1]
 		table.remove(castQueue,1)
 
 		local ability = v[2]
+		--Checking for wrong ulti casting
+		if ability == R and 
+		(((not sheep or sheep.cd == 0) and (not dagon or dagon.cd == 0) and (not ethereal or ethereal.cd == 0) and (not Q or Q.cd == 0) and (not W or W.cd == 0) and (not blink or blink.cd == 0))
+		or (((not sheep or sheep.cd == 0) or (not dagon or dagon.cd == 0) or (not ethereal or ethereal.cd == 0) or (not Q or Q.cd == 0) or (not W or W.cd == 0) or (not blink or blink.cd == 0)) and not config.AlwaysUlti)) then
+			return
+		end
 		-- invalid ability workaround...
 		if type(ability) == "string" then
 			ability = me:FindItem(ability)
@@ -100,17 +118,7 @@ function ComboTick( tick )
 			return
 		end
 	end
-	-- grab needed items
-	local blink = me:FindItem("item_blink")
-	local sheep = nil
-	-- we dont need a sheepstick against tide
-	if target.classId ~= CDOTA_Unit_Hero_Tidehunter then
-		sheep = me:FindItem("item_sheepstick")
-	end
-	local ethereal = me:FindItem("item_ethereal_blade")
-	local dagon = me:FindDagon()
-	local soulring = me:FindItem("item_soul_ring")
-
+	
 	if (not sheep or sheep.cd > 0) and ((sheep and R.level < 3) or Q.cd > 0 or (dagon and dagon.cd > 0) or (ethereal and ethereal.cd > 0)) and R:CanBeCasted() and ((casted and not config.AlwaysUlti) or config.AlwaysUlti) then
 		table.insert(castQueue,{1000+math.ceil(R:FindCastPoint()*1000),R})
 		return
