@@ -1,5 +1,4 @@
---[[		Config			]]
--- pulls ancients with a ranged creep
+--<<pulls ancients with a ranged creep>>
 
 --[[		Code			]]
 require("libs.ScriptConfig")
