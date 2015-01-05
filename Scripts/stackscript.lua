@@ -1,9 +1,8 @@
 --[[		Config			]]
--- pulls ancients with a ranged creep
+-- config can be found in Scripts\config\stackscript.txt
 
 --[[		Code			]]
 require("libs.ScriptConfig")
-require("libs.Utils")
 
 config = ScriptConfig.new()
 config:SetParameter("Hotkey", "O", config.TYPE_HOTKEY)
@@ -18,87 +17,72 @@ ownRange = config.OwnRange
 enemyRange = config.EnemyRange
 towerRange = config.TowerRange
 
--- game time seconds when start to stack (from wait point)
-startTime_radiant = 47	
-startTime_dire = 45
--- when to attack the ancient
-attack_radiant = 51
-attack_dire = 52
 
--- routes
-stack_route_radiant = {
-	Vector(-2514,-155,256), 	-- attackWait
-	Vector(-4762,-2229,256), 	-- move1
-	Vector(-2144,-544,256),		-- wait (must be last)
-}  
-
-stack_route_dire = {
-	Vector(3458, -640, 127), 	-- attackWait
-	Vector(2278, 338, 127), 	-- move1
-	Vector(3808, -96, 256)		-- wait (must be last)
-} 
+startTime = 49                         -- game time seconds when start to stack (from wait point)
+stack_route_radiant = {Vector(-2991,198,256), Vector(-7264,-6752,270), Vector(-2144,-480,256)}  -- triangle route for radiant ( 1:pull point, 2: fountain, 3: wait point )
+stack_route_dire = {Vector(4447,-1950,127), Vector(6975,6742,256), Vector(5083,-1433,127)}      -- triangle route for dire  1:pull point, 2: fountain, 3: wait point )
  
 activated = true -- toggle by hotkey if activated
 creepHandle = nil -- current creep
 font = drawMgr:CreateFont("stackfont","Arial",14,500) -- font for drawing
 if string.byte("A") <= hotkey and hotkey <= string.byte("Z") then
-	defaultText = "StackScript: select your ranged creep and press \""..string.char(hotkey).."\"." -- default text to display
+	defaultText = "StackScript: select your creep and press \""..string.char(hotkey).."\"." -- default text to display
 else
-	defaultText = "StackScript: select your ranged creep and press keycode \""..hotkey.."\"." -- default text to display
+	defaultText = "StackScript: select your creep and press keycode \""..hotkey.."\"." -- default text to display
 end
 text = drawMgr:CreateText(x,y,-1,defaultText,font) -- text object to draw
 route = nil -- currently active route
-waitTime = nil -- currently active wait time
-attackTime = nil
-ordered = 0 -- state 0 = waiting and moving to attack spot
+ordered = false -- only order once
 registered = false -- only register our callbacks once
 
+
 function Key(msg,code)
-	if msg ~= KEY_UP or client.chat or not client.connected or client.loading or code ~= hotkey then
-		return
-	end
-	activated = not activated
-	if not activated then
-		text.text = defaultText
-		return
-	end
-	-- check if we're ingame and already have a valid team
-	local player = entityList:GetMyPlayer()
-	if not player or player.team == LuaEntity.TEAM_NONE then
-		activated = false
-		return
-	end
-	-- check if the player has currently selected a controllable creep
-	local selection = player.selection
-	if #selection ~= 1 or 
-		(selection[1].type ~= LuaEntity.TYPE_CREEP and selection[1].type ~= LuaEntity.TYPE_NPC) 
-		or not selection[1].controllable or selection[1].attackType ~= LuaEntityNPC.ATTACK_RANGED then
-		activated = false
+	if msg ~= KEY_UP or client.chat or not client.connected or client.loading then
 		return
 	end
 
-	if player.team == LuaEntity.TEAM_DIRE then
-		route = stack_route_dire
-		waitTime = startTime_dire
-		attackTime = attack_dire
-	elseif player.team == LuaEntity.TEAM_RADIANT then
-		route = stack_route_radiant
-		waitTime = startTime_radiant
-		attackTime = attack_radiant
+	if code == hotkey then
+		activated = not activated
+		if activated then
+
+			-- check if we're ingame and already have a valid team
+			local player = entityList:GetMyPlayer()
+			if not player or player.team == LuaEntity.TEAM_NONE then
+				activated = false
+				return
+			end
+
+			-- check if the player has currently selected a controllable creep
+			local selection = player.selection
+			if #selection ~= 1 or (selection[1].type ~= LuaEntity.TYPE_CREEP and selection[1].type ~= LuaEntity.TYPE_NPC) or not selection[1].controllable then
+				activated = false
+				return
+			end
+
+			if player.team == LuaEntity.TEAM_DIRE then
+				route = stack_route_dire
+			elseif player.team == LuaEntity.TEAM_RADIANT then
+				route = stack_route_radiant
+			end
+
+			-- maybe we're an observer only, so there's no valid route
+			if not route then 
+				activated = false
+				return
+			end
+
+			creepHandle = selection[1].handle
+			player:Move(route[3])
+			text.text = "StackScript: moving creep to pull location."
+		else
+			text.text = defaultText
+		end
 	end
-	-- maybe we're an observer only, so there's no valid route
-	if not route or not waitTime or not attackTime then 
-		activated = false
-		return
-	end
-	creepHandle = selection[1].handle
-	player:Move(route[#route])
-	text.text = "StackScript: moving creep to wait location."
 end
 
 sleeptick = 0
 function Tick(tick)
-	if sleeptick > tick or not activated or not creepHandle or client.paused then
+	if sleeptick > tick or not activated or not creepHandle then
 		return
 	end
 	sleeptick = tick + 250
@@ -117,53 +101,31 @@ function Tick(tick)
 		return
 	end
 	-- do the stacking if not paused, correct timing and creep is already @waiting position
-	if ordered == 0 and (client.gameTime % 60) >= waitTime and creep:GetDistance2D(route[#route]) <= 3 then
-		text.text = "StackScript: waiting for attack order."
-		creep:Move(route[1])
-		ordered = 1
-	-- attack creep
-	elseif ordered == 1 and (client.gameTime % 60 >= attackTime) then
-		local enemy = GetNearestPullCreep(creep)
-		if not enemy then
-			ordered = 0
-			player:Move(route[#route])
-			sleeptick = tick + 9*1000
-			text.text = "StackScript: no enemy to pull here."
-			return
+	if not ordered and (client.gameTime % 60 >= startTime) and not client.paused and isPosEqual(creep.position,route[3],2) then
+		text.text = "StackScript: stack ordered."
+		ordered = true
+
+		local selection = player.selection
+		-- select our pull creep
+		player:Select(creep)
+		-- move the triangle route
+		player:Move(route[1],false)
+		player:Move(route[2],true)
+		player:Move(route[3],true)
+		-- reselect our former selection
+		player:Select(selection[1])
+		for i = 2, #selection, 1 do
+			player:SelectAdd(selection[i])
 		end
-		text.text = "StackScript: pulling."
-		creep:Attack(enemy)
-		ordered = 2
-		sleeptick = tick + 1650 -- wait till the attack starts
-	elseif ordered == 2 then
-		text.text = "StackScript: waiting for next pull."
-		creep:Move(route[2],false)
-		creep:Move(route[3],true)
-		ordered = 0
+	elseif ordered and (client.gameTime % 60 < startTime) then
+		ordered = false
+		text.text = "StackScript: waiting."
 	end
 end
 
-function GetNearestPullCreep(creep)
-	local foundAncients = {}
-	local ancients = entityList:GetEntities({visible=true,alive=true,type=LuaEntity.TYPE_CREEP})
-	for _,v in ipairs(ancients) do
-		if v.ancient and v.spawned then
-			table.insert(foundAncients,v)
-		end
-	end
-	-- get nearest one
-	local bestDistance = nil
-	local bestAncient = nil
-
-	for _,v in ipairs(foundAncients) do
-		local distance = creep:GetDistance2D(v)
-		if not bestDistance or distance < bestDistance then
-			bestAncient = v
-			bestDistance = distance
-		end
-	end
-
-	return bestAncient
+-- check if creep is already @ wait position
+function isPosEqual(v1, v2, d)
+	return (v1-v2).length <= d
 end
 
 -- reset all stuff after leaving a game
@@ -172,7 +134,6 @@ function Close()
 	text.visible = false
 	creepHandle = nil
 	route = nil
-	waitTime = nil
 	activated = false
 	ordered = false
 
